@@ -1,6 +1,7 @@
 import sys
 from disco.core import Disco, result_iterator
 from disco.settings import DiscoSettings
+import simplejson as json
 
 def map(line, params):
     def nextDistance(d):
@@ -8,12 +9,12 @@ def map(line, params):
             return -1
         return d + 1
 
-    comps = [int(x) for x in line.split(",")]
+    comps = json.loads(line)
     
     node = comps[0]
     distance = comps[1]
     
-    nodes = comps[2:]
+    nodes = comps[2]
     
     yield node, dict(id=1, nodes=nodes, distance=distance)
 
@@ -39,7 +40,7 @@ def reduce(iter, params):
             if d["distance"] > 0:
                 distance = mymin(distance, d["distance"])
 
-        yield node, ("%s,%s" % (node, ",".join([str(distance)] + [str(x) for x in nodes])))
+        yield node, json.dumps([node,distance,nodes])
 
 disco = Disco(DiscoSettings()['DISCO_MASTER'])
 print "Starting Disco job.."
