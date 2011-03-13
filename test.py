@@ -9,38 +9,44 @@ def map(line, params):
             return -1
         return d + 1
 
+    def mapValues(f, d):
+        return dict([(k, f(v)) for k, v in d.items()])
+
     comps = json.loads(line)
     
     node = comps[0]
-    distance = comps[1]
+    distances = comps[1]
     
     nodes = comps[2]
     
-    yield node, dict(id=1, nodes=nodes, distance=distance)
+    yield node, dict(id=node, nodes=nodes, distances=distances)
 
     for n in nodes:
-        yield n, dict(id=n, distance=nextDistance(distance))
+        yield n, dict(id=n, distances=mapValues(nextDistance, distances))
 
 def reduce(iter, params):
     def mymin(a, b):
-        return min([x for x in (a,b) if x != -1])
+        mins = [x for x in (a,b) if x != -1]
+        if not mins:
+            return -1
+        return min(mins)
 
     from disco.util import kvgroup
     for node, distances in kvgroup(sorted(iter)):
         nodes = []
-        distance = -1
         distances = list(distances)
+        newdistances = {}
+
+        def minFrom(d, a):
+            for k, v in a.items():
+                d[k] = mymin(d.get(k, -1), v)
+        
         for d in distances:
             if d.get("nodes"):
                 nodes = d["nodes"]
-                distance = d["distance"]
-                break
+            minFrom(newdistances, d["distances"])
 
-        for d in distances:
-            if d["distance"] > 0:
-                distance = mymin(distance, d["distance"])
-
-        yield node, json.dumps([node,distance,nodes])
+        yield node, json.dumps([node,newdistances,nodes])
 
 disco = Disco(DiscoSettings()['DISCO_MASTER'])
 print "Starting Disco job.."
